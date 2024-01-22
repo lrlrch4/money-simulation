@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money exchange simulation</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    
+</head>
+
+<style> 
+    body {
+        background: black;
+        overflow: hidden;
+        display: flex;
+        align-items: start;
+        height: 100vh;
+        width: 100vw;
+        margin: 0px;
+    }
+    h1 {
+        color: white;
+        font-size: 12px;
+        font-family: system-ui;
+    }
+
+    h2 {
+        color: white;
+        font-size: 12px;
+        font-family: system-ui;
+        margin: 3px;
+    }
+
+    button {
+        font-family: arial;
+        font-weight: bold;
+        color: #FFFFFF !important;
+        font-size: 10px;
+        text-shadow: none;
+        box-shadow: none;
+        padding: 5px 15px;
+        border-radius: 6px;
+        border: 0px solid #3866A3;
+        background: #00AAFF;
+        margin: 5px;
+        }
+    button:hover {
+        color: #FFFFFF !important;
+        background: #468CCF;
+        background: linear-gradient(to top, #468CCF, #63B8EE);
+    }
+
+
+    .dataContainer {
+        background-color: rgb(20, 20, 20);
+        display: flex;
+        flex-direction: row;
+        padding: 1px;
+        margin: 0px;
+        width: 100vw;
+    }
+
+    .inputContainer {
+        margin: 10px;
+        padding: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+
+    .svgContainer {
+        background-color: rgb(0, 0, 0);
+        display: flex;
+        justify-content: center;
+        height: 100vh;
+    }
+
+    .svgElement {
+        background-color: rgb(26, 26, 26);
+        border: 1px solid white;        
+        margin: 10px;
+    }
+
+</style>
+
+<body>
+    <div class="mainContainer">
+        <div class = 'dataContainer'> 
+            <div class = 'inputContainer'>
+                <h1>Money exchange simulation 💸</h1>
+            </div>
+
+            <div class = "inputContainer">
+                <button id = 'startSimulation'>Start</button>
+                <button id = 'pauseSimulation'>Pause</button>
+                <button id = 'resetSimulation'>Reset</button>
+            </div>
+
+            <div class = 'inputContainer'>
+                <button id = 'sortButton'>Sort</button>
+            </div>
+
+            <div class = "inputContainer" id = "radiusContainer">
+                <label for="numUsersSlider" style="color: white;">Num users:</label>
+                <input type="range" id="numUsersSlider" min="2" max="900" value="10" step="2" oninput="updateNumUsers(this.value)">
+                <span id="numUsersValue" style="color: white; margin-left: 2px;">10</span>                                
+            </div>            
+
+            <div class = "inputContainer" id = "radiusContainer">
+                <label for="fpsSlider" style="color: white;">fps: </label>
+                <input type="range" id="fpsSlider" min="1" max="60" value="1" step="1" oninput="updateFps(this.value)">
+                <span id="fpsValue" style="color: white; margin-left: 2px;">10</span>                                
+            </div>
+
+            <div class="inputContainer">
+                <h2>🟢 exchange winner</h2>
+                <h2>🔴 exchange loser</h2>
+                <h2>🔵 user's money</h2>
+            </div>
+        </div> 
+        
+        <div class = 'svgContainer' id = 'svgContainer'>
+            <svg class="svgElement" id="svgSimulation"></svg>
+            <svg class = "svgElement" id = 'svgChar'></svg>
+        </div>                         
+    </div>
+    <script src = 'connectAll.js'></script>
+    <script>
+        const svgWidth = 500;
+        const svgHeight = 500;
+
+        const svgSimulation = d3.select('#svgSimulation')
+            .attr('width', svgWidth)
+            .attr('height', svgHeight);
+
+        var rect = svgSimulation.node().getBoundingClientRect();
+        var svgRect = {
+            top: rect.top + window.scrollY,
+            left: rect.left + window.scrollX,
+            width: rect.width,
+            height: rect.height
+        };
+
+        const svgChar = d3.select('#svgChar')
+            .attr('width', svgWidth)
+            .attr('height', svgHeight); 
+
+    //Simulation setup
+
+        var numUsers = 16;
+        const initialValue = 10;
+
+        var moneyDistribution = Array.from({ length: numUsers }, (_, index) => initialValue);
+
+        var sortedDistribution = [...moneyDistribution]
+        sortedDistribution.sort(function(a,b) {return b-a;});
+
+        function inputSetup(){ 
+            document.getElementById('numUsersValue').innerText = numUsers;
+
+            document.getElementById('numUsersSlider').value = numUsers;
+
+            document.getElementById('fpsValue').innerText = fps;
+
+            document.getElementById('fpsSlider').value = fps;
+
+            document.getElementById('startSimulation')
+                .addEventListener('click', startSimulation);
+
+            document.getElementById('pauseSimulation')
+                .addEventListener('click', pauseSimulation);
+
+            document.getElementById('resetSimulation')
+                .addEventListener('click', resetSimulation);   
+                
+            document.getElementById('sortButton')
+                .addEventListener('click', sortButton);
+        };
+
+    //Inputs setup   
+        var selectedUser = '';
+        var selectedValue = '';
+        function circleClicked() {
+            selectedUser = +this.id.slice(1);
+            selectedValue = moneyDistribution[+this.id.slice(1)];
+
+            svgSimulation.selectAll('circle').attr('stroke', 'white');
+
+            for(let i = 0; i < numUsers; i++){
+                svgChar.select(`#bar${i}`).attr('stroke', amountColor); 
+            }
+
+            svgSimulation.select(`#c${selectedUser}`).attr('stroke', 'yellow');
+            svgChar.select(`#bar${selectedUser}`).attr('stroke', 'yellow'); 
+            
+            svgChar.select(`#text${2}`)
+                .text(`selected user = ${selectedUser}`)
+                .attr('fill', 'yellow');
+            
+            svgChar.select(`#text${3}`)
+                .text(`selected value = ${selectedValue}`)
+                .attr('fill', 'yellow');
+        }; 
+
+        function updateNumUsers(newNumUsers) {            
+            document.getElementById('numUsersValue').innerText = newNumUsers;
+            numUsers = newNumUsers;
+            pauseSimulation();
+            resetSimulation();
+            svgSimulation.selectAll('line').remove();
+            isSorted = false; 
+            drawFrame();
+        }
+
+        function updateFps(newFps) {
+            document.getElementById('fpsValue').innerText = newFps;
+            fps = newFps;
+        }
+
+
+    //Animation setup    
+        var fps = 5;
+        var frame = 0;    
+
+        function simulate(){
+            frame += 1; 
+            svgSimulation.selectAll('line').remove();
+            connectAll();
+        }
+
+        function drawFrame() {    
+
+        //Drawing simulation elements        
+            svgSimulation.selectAll('#drawFrameGroup').remove();            
+            const drawFrameGroup = svgSimulation.append('g')
+                .attr('id', 'drawFrameGroup');          
+               
+            var maxColumns = 4;
+            if(numUsers > 16 & numUsers <= 100){
+                maxColumns = 10;
+            }
+            if(numUsers > 100 & numUsers < 400){
+                maxColumns = 20;
+            };   
+            if(numUsers >= 400){
+                maxColumns = 30;
+            }         
+
+            const separation = svgWidth / (maxColumns + 1);
+            amountColor = '#00AAFF';
+            radius = .34*separation;
+
+            var id = 0;
+            //Loop for drawing the circles
+            for (let i = 0; i < numUsers; i++) {
+                const row = Math.floor(i / maxColumns);
+                const column = i % maxColumns;
+
+                drawFrameGroup.append('circle')
+                    .attr('id', `c${id}`)
+                    .attr('cx', separation * (column + 1))
+                    .attr('cy', separation * (row + 1))
+                    .attr('r', radius)
+                    .attr('fill', 'rgb(26,26,26)')
+                    .attr('stroke', 'white')
+                    .attr('stroke-width', '1px')
+                    .on('mouseover', circleClicked); 
+
+
+                const startAngle = 0;
+                const endAngle = 2*Math.PI * moneyDistribution[id]/(initialValue * numUsers);
+                
+                const arc = d3.arc()
+                    .innerRadius(.15 * separation)  
+                    .outerRadius(.337 * separation)  
+                    .startAngle(startAngle)  
+                    .endAngle(endAngle); 
+                
+                drawFrameGroup.append("path")
+                    .attr('id', `arc${id}`)
+                    .attr("d", arc)
+                    .attr("transform", 
+                    `translate(
+                        ${ separation * (column + 1) },
+                        ${ separation * (row + 1) }
+                        )` 
+                    )  
+                    .style("fill", amountColor); 
+
+                id += 1;
+            };//drawing circles loop ended
+            drawFrameGroup.select(`#c${selectedUser}`).attr('stroke', 'yellow')
+            
+        //Drawing char elements
+            svgChar.selectAll('#drawCharGroup').remove();            
+            const drawCharGroup = svgChar.append('g')
+                .attr('id', 'drawCharGroup');
+
+            const totalValue = initialValue * numUsers;
+
+            var maxScaleValue = .012 * totalValue;
+
+            if(sortedDistribution[0] > .01 * totalValue & sortedDistribution[0] <= .05* totalValue){
+                maxScaleValue = .05*totalValue;
+            };
+            if(sortedDistribution[0] > .05 * totalValue & sortedDistribution[0] <= .25* totalValue){
+                maxScaleValue = .25*totalValue;
+            };
+            if(sortedDistribution[0] > .25 * totalValue & sortedDistribution[0] <= .5* totalValue){
+                maxScaleValue = .5*totalValue;
+            };
+            if(sortedDistribution[0] > .5 * totalValue & sortedDistribution[0] <= .75* totalValue){
+                maxScaleValue = .75*totalValue;
+            };  
+            if(sortedDistribution[0] > .75 * totalValue){
+                maxScaleValue = totalValue;
+            };                
+
+            const moneyAxis = d3.scaleLinear()
+                .domain([0, maxScaleValue])
+                .range([.02*svgWidth, .75*svgWidth]);
+
+            const usersAxis = d3.scaleLinear()
+                .domain([0, numUsers - 1])
+                .range([.02*svgHeight, .94*svgHeight]);
+            
+            const separationBars = (numUsers == 2) ? 0.02 : (numUsers > 2) ? 0.45 : undefined;
+            for(let i = 0; i < moneyDistribution.length; i++){
+                
+                drawCharGroup.append('line')
+                    .attr('id', `bar${i}`)
+                    .attr('x1', moneyAxis(0))
+                    .attr('y1', usersAxis(i))
+                    .attr('x2', moneyAxis(moneyDistribution[i]) )
+                    .attr('y2', usersAxis(i))
+                    .attr('stroke', amountColor)
+                    .attr('stroke-width', separationBars * (usersAxis(1) - usersAxis(0)) );
+            };
+            drawCharGroup.select(`#c${selectedUser}`).attr('stroke', 'yellow')
+
+            drawCharGroup.append("g")
+                .attr("transform", `translate(${0},${.95*svgHeight} )`)
+                .call(d3.axisBottom(moneyAxis).ticks(10))
+                .attr('color', 'white');
+
+            drawCharGroup.append("g")
+                .attr("transform", `translate(${moneyAxis(0)},${0} )`)
+                .call(
+                    d3.axisLeft(usersAxis)
+                        .ticks(numUsers - 1)
+                        .tickFormat( 
+                            (d,i) => {return }
+                        )
+                    )
+                .attr('color', 'white')
+                .attr('font-size', '7px');
+            
+        //Draw sorted bars       
+
+            if(isSorted){
+                svgSimulation.selectAll('line').remove();          
+
+                for(let i = 0; i < sortedDistribution.length; i++){
+                    drawCharGroup.append('line')
+                        .attr('id', 'sortedBars')
+                        .attr('x1', moneyAxis(0))
+                        .attr('y1', usersAxis(i))
+                        .attr('x2', moneyAxis(sortedDistribution[i]) )
+                        .attr('y2', usersAxis(i))
+                        .attr('stroke', 'green')
+                        .attr('stroke-width', separationBars * (usersAxis(1) - usersAxis(0)) )
+                        .attr('opacity', .5);  
+                };                
+            };
+
+        //Write statisc data in char svg   
+            const numLosers = moneyDistribution.filter(element => element === 0).length
+
+            const standardDeviation = Math.sqrt(
+                moneyDistribution.reduce((variance, value) => variance + (initialValue - value)**2, 0)
+                );
+
+            const logarithDistribution = sortedDistribution.map(value => Math.log(value + 1));
+            
+            statisticsText = [
+                `iteration = ${frame}`,
+                `total users = ${numUsers}`, 
+                `selected user = ${selectedUser}`,
+                `selected value = ${selectedValue}`, 
+                `players = ${numUsers - numLosers}`,
+                `num losers = ${numLosers}`,
+                `total money = ${totalValue}`,
+                `max value = ${sortedDistribution[0]}`,
+                `sigma = ${standardDeviation.toFixed(2)}`                               
+            ];
+
+            for(let i = 0; i < statisticsText.length; i++){
+                drawCharGroup.append('text')
+                    .text(statisticsText[i])
+                    .attr('id', `text${i}`)
+                    .attr('x', .8*svgWidth)
+                    .attr('y', (.1 + 0.05*i)*svgHeight)
+                    .attr('fill', 'white')
+                    .attr('font-size', '12px');
+            };
+            
+            console.log(logarithDistribution);
+        }; //end drawFrame
+
+        var isSimulating = false;  
+        var startButtonCount = 0;
+
+        function updateFrame() {
+            if(isSimulating){
+                setTimeout(
+                    function(){                        
+                        drawFrame();
+                        simulate();
+                        updateFrame();
+                    }, 
+                    1000/fps   
+                );
+            };
+        };
+
+    //Buttons functions
+        function startSimulation() {
+            startButtonCount += 1;
+            isSimulating = true;
+
+            if(startButtonCount == 1){
+                updateFrame();
+            };
+
+            isSorted = false;
+            console.log('start');
+        };
+
+        function pauseSimulation() {
+            startButtonCount = 0;
+            isSimulating = false; 
+            console.log('pause');
+        };
+
+        function resetSimulation() {            
+            startButtonCount = 0;
+            isSimulating = false;
+            frame = 0;
+            svgSimulation.selectAll('line').remove();
+
+            moneyDistribution = Array.from({ length: numUsers }, (_, index) => initialValue);
+
+            sortedDistribution = [...moneyDistribution];   
+            sortedDistribution.sort(function(a,b) {return b-a;});        
+            
+            drawFrame();  
+            console.log('reset');         
+        };     
+        
+        var isSorted = false;
+        function sortButton() {
+            isSorted = !isSorted;
+            drawFrame();
+        };
+        
+        inputSetup();        
+        drawFrame();
+
+    </script>
+</body>
+</html>
