@@ -115,8 +115,8 @@
     }
 
     #tutorialImage {
-        width: 600px;
-        height: 360px;
+        width: 50vw;
+        height: 30vw;
     }
         
 
@@ -138,7 +138,10 @@
 
             <div class = 'inputContainer'>
                 <button id = 'sortButton'>Sort</button>
+                <button id = 'logButton'>Logarithmic</button>
             </div>
+
+
 
             <div class = "inputContainer" id = "radiusContainer">
                 <label for="numUsersSlider" style="color: white;">users:</label>
@@ -150,12 +153,6 @@
                 <label for="fpsSlider" style="color: white;">fps: </label>
                 <input type="range" id="fpsSlider" min="1" max="60" value="1" step="1" oninput="updateFps(this.value)">
                 <span id="fpsValue" style="color: white; margin-left: 2px;">10</span>                                
-            </div>
-
-            <div class="inputContainer">
-                <h2>🟢 exchange winner</h2>
-                <h2>🔴 exchange loser</h2>
-                <h2>🔵 user's money</h2>
             </div>
         </div> 
         
@@ -231,6 +228,9 @@
                 
             document.getElementById('sortButton')
                 .addEventListener('click', sortButton);
+
+            document.getElementById('logButton')
+                .addEventListener('click', logButton);
         };
 
     //Inputs setup   
@@ -412,8 +412,7 @@
                 .attr('font-size', '7px');
             
         //Draw sorted bars     
-            if(isSorted){
-                svgSimulation.selectAll('line').remove();      
+            if(isSorted){                
                 for(let i = 0; i < sortedDistribution.length; i++){
                     drawCharGroup.append('line')
                         .attr('id', 'sortedBars')
@@ -427,14 +426,28 @@
                 };                
             };
 
+        //Draw logarithm bars
+            const logarithmDistribution = sortedDistribution.map(value => Math.log(value + 1));
+            if(isLog){
+                for(let i = 0; i < sortedDistribution.length; i++){
+                    drawCharGroup.append('line')
+                        .attr('id', 'sortedBars')
+                        .attr('x1', moneyAxis(0))
+                        .attr('y1', usersAxis(i))
+                        .attr('x2', moneyAxis(logarithmDistribution[i]) )
+                        .attr('y2', usersAxis(i))
+                        .attr('stroke', 'violet')
+                        .attr('stroke-width', separationBars * (usersAxis(1) - usersAxis(0)) )
+                        .attr('opacity', .75);  
+                };
+            }
+
         //Write statisc data in char svg   
             const numLosers = moneyDistribution.filter(element => element === 0).length
 
             const standardDeviation = Math.sqrt(
                 moneyDistribution.reduce((variance, value) => variance + (initialValue - value)**2, 0)
                 );
-
-            const logarithDistribution = sortedDistribution.map(value => Math.log(value + 1));
 
             const entropy = calculateEntropy(moneyDistribution);
             
@@ -458,10 +471,8 @@
                     .attr('x', .8*svgWidth)
                     .attr('y', (.05 + 0.05*i)*svgHeight)
                     .attr('fill', 'white')
-                    .attr('font-size', '10px');
+                    .attr('font-size', `${0.025*svgSide}`);
             };
-            
-            console.log(logarithDistribution);
         }; //end drawFrame
 
         var isSimulating = false;  
@@ -519,6 +530,12 @@
             isSorted = !isSorted;
             drawFrame();
         };
+
+        var isLog = false; 
+        function logButton() {
+            isLog = !isLog;
+            drawFrame();
+        }
         
         inputSetup();        
         drawFrame();
