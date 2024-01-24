@@ -31,6 +31,11 @@
         margin: 3px;
     }
 
+    h3 {
+        color: white;
+        font-size: 14px;
+    }
+
     button {
         font-family: arial;
         font-weight: bold;
@@ -82,15 +87,49 @@
         margin: 10px;
     }
 
+    .popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.9);
+    width: 70%;
+    height: auto;
+    z-index: 1;
+    }
+
+    .popup-content {
+        text-align: center;
+        color: white;
+        padding: 20px;
+    }
+
+    .close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 20px;
+        cursor: pointer;
+        color: white;
+    }
+
+    #tutorialImage {
+        width: 600px;
+        height: 360px;
+    }
+        
+
 </style>
 
 <body>
     <div class="mainContainer">
         <div class = 'dataContainer'> 
+            
             <div class = 'inputContainer'>
-                <h1>Money exchange simulation 💸</h1>
+                <h1>Money exchange simulation 💸</h1>                
             </div>
-
+            
             <div class = "inputContainer">
                 <button id = 'startSimulation'>Start</button>
                 <button id = 'pauseSimulation'>Pause</button>
@@ -102,7 +141,7 @@
             </div>
 
             <div class = "inputContainer" id = "radiusContainer">
-                <label for="numUsersSlider" style="color: white;">Num users:</label>
+                <label for="numUsersSlider" style="color: white;">users:</label>
                 <input type="range" id="numUsersSlider" min="2" max="900" value="10" step="2" oninput="updateNumUsers(this.value)">
                 <span id="numUsersValue" style="color: white; margin-left: 2px;">10</span>                                
             </div>            
@@ -123,12 +162,28 @@
         <div class = 'svgContainer' id = 'svgContainer'>
             <svg class="svgElement" id="svgSimulation"></svg>
             <svg class = "svgElement" id = 'svgChar'></svg>
-        </div>                         
+        </div> 
+
+        
+        <div class="popup" id="popup">
+            <div class="popup-content">
+                <span class="close" onclick="closePopup()">&times;</span>
+                <h1>TUTORIAL</h1>
+                <h3>This is a money exchange simulation. Each circle represents a user who will be paired with another user to randomly exchange one unit of money. On the right, the distribution of money in each iteration is displayed, along with some interesting statistical information. </h3>
+                <img id = 'tutorialImage' src="/assets/tutorial.png" alt="Imagen">
+                <h3>You can choose the number of user, frames per second and use the Sort button to sort the money distribution.<h3>
+            </div>
+        </div>
+
     </div>
+    <script src="popup.js"></script>
     <script src = 'connectAll.js'></script>
+    <script src = 'calculateEntropy.js'></script>
     <script>
-        const svgWidth = 500;
-        const svgHeight = 500;
+
+        const svgSide = Math.min(.4*window.innerWidth, .8*window.innerHeight)
+        const svgWidth = svgSide;
+        const svgHeight = svgSide;
 
         const svgSimulation = d3.select('#svgSimulation')
             .attr('width', svgWidth)
@@ -195,7 +250,7 @@
             svgChar.select(`#bar${selectedUser}`).attr('stroke', 'yellow'); 
             
             svgChar.select(`#text${2}`)
-                .text(`selected user = ${selectedUser}`)
+                .text(`selected user = c${selectedUser}`)
                 .attr('fill', 'yellow');
             
             svgChar.select(`#text${3}`)
@@ -326,8 +381,7 @@
                 .range([.02*svgHeight, .94*svgHeight]);
             
             const separationBars = (numUsers == 2) ? 0.02 : (numUsers > 2) ? 0.45 : undefined;
-            for(let i = 0; i < moneyDistribution.length; i++){
-                
+            for(let i = 0; i < moneyDistribution.length; i++){                
                 drawCharGroup.append('line')
                     .attr('id', `bar${i}`)
                     .attr('x1', moneyAxis(0))
@@ -337,6 +391,7 @@
                     .attr('stroke', amountColor)
                     .attr('stroke-width', separationBars * (usersAxis(1) - usersAxis(0)) );
             };
+
             drawCharGroup.select(`#c${selectedUser}`).attr('stroke', 'yellow')
 
             drawCharGroup.append("g")
@@ -356,11 +411,9 @@
                 .attr('color', 'white')
                 .attr('font-size', '7px');
             
-        //Draw sorted bars       
-
+        //Draw sorted bars     
             if(isSorted){
-                svgSimulation.selectAll('line').remove();          
-
+                svgSimulation.selectAll('line').remove();      
                 for(let i = 0; i < sortedDistribution.length; i++){
                     drawCharGroup.append('line')
                         .attr('id', 'sortedBars')
@@ -382,17 +435,20 @@
                 );
 
             const logarithDistribution = sortedDistribution.map(value => Math.log(value + 1));
+
+            const entropy = calculateEntropy(moneyDistribution);
             
             statisticsText = [
                 `iteration = ${frame}`,
                 `total users = ${numUsers}`, 
-                `selected user = ${selectedUser}`,
+                `selected user = c${selectedUser}`,
                 `selected value = ${selectedValue}`, 
                 `players = ${numUsers - numLosers}`,
                 `num losers = ${numLosers}`,
                 `total money = ${totalValue}`,
                 `max value = ${sortedDistribution[0]}`,
-                `sigma = ${standardDeviation.toFixed(2)}`                               
+                `sigma = ${standardDeviation.toFixed(2)}`, 
+                `entropy = ${entropy.toFixed(2)}`                              
             ];
 
             for(let i = 0; i < statisticsText.length; i++){
@@ -400,9 +456,9 @@
                     .text(statisticsText[i])
                     .attr('id', `text${i}`)
                     .attr('x', .8*svgWidth)
-                    .attr('y', (.1 + 0.05*i)*svgHeight)
+                    .attr('y', (.05 + 0.05*i)*svgHeight)
                     .attr('fill', 'white')
-                    .attr('font-size', '12px');
+                    .attr('font-size', '10px');
             };
             
             console.log(logarithDistribution);
