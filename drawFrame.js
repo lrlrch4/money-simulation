@@ -137,7 +137,7 @@ function drawFrame() {
         .attr("transform", `translate(${moneyAxis(0)},${0} )`)
         .call(
             d3.axisLeft(usersAxis)
-                .ticks(numUsers - 1)
+                .ticks(0)
                 .tickFormat( 
                     (d,i) => {return }
                 )
@@ -210,10 +210,10 @@ function drawFrame() {
         drawCharGroup.append('text')
             .text(statisticsText[i])
             .attr('id', `text${i}`)
-            .attr('x', .72*svgWidth)
+            .attr('x', .71*svgWidth)
             .attr('y', (.2 + 0.05*i)*svgHeight)
             .attr('fill', 'white')
-            .attr('font-size', `${0.020*svgSide}`)
+            .attr('font-size', `${0.018*svgSide}`)
             .attr('font-family', 'Courier New');
     }
     drawCharGroup.select(`#text${10}`).attr('fill', 'green');
